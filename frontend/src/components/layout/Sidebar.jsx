@@ -20,7 +20,7 @@ import styles from './Sidebar.module.css';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/cases', label: 'Case Management', icon: Briefcase },
-  { href: '/intake', label: 'Enrollment Intake', icon: UserPlus },
+  { href: '/intake', label: 'Member Enrollment', icon: UserPlus },
   { href: '/renewals', label: 'Renewals & Updates', icon: RefreshCcw },
   { href: '/reconciliation', label: 'Reconciliation', icon: Layers },
   { href: '/members', label: 'Member Profile', icon: Users },
