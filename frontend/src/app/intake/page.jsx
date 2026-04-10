@@ -36,24 +36,27 @@ export default function Intake() {
   };
 
   const processFiles = (files) => {
-    const newFiles = Array.from(files).map((f) => {
-      const isEdi = f.name.toLowerCase().endsWith('.edi');
-      return {
-        name: f.name,
-        status: isEdi ? 'processing' : 'error',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-    });
+    const validFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.edi'));
+    
+    if (validFiles.length === 0 && files.length > 0) {
+      alert("Invalid file type. Only .edi files are accepted.");
+      return;
+    }
+
+    const newFiles = validFiles.map((f) => ({
+      name: f.name,
+      status: 'processing',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }));
+    
     setEdiFiles((prev) => [...newFiles, ...prev]);
 
     newFiles.forEach((file) => {
-      if (file.status === 'processing') {
-        setTimeout(() => {
-          setEdiFiles((prev) => prev.map((pf) => 
-            pf.name === file.name ? { ...pf, status: 'success' } : pf
-          ));
-        }, 2000);
-      }
+      setTimeout(() => {
+        setEdiFiles((prev) => prev.map((pf) => 
+          pf.name === file.name ? { ...pf, status: 'success' } : pf
+        ));
+      }, 2000);
     });
   };
 
