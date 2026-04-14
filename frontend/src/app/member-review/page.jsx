@@ -96,7 +96,16 @@ export default function MemberReviewPage() {
                   <tr>
                     <th>Member Name</th>
                     <th>Enrollment Type</th>
-                    <th>Status</th>
+                    <th>
+                      <Annotation
+                        title="Status Badges"
+                        what="simplify decision-making"
+                        why="reduce complexity"
+                        how="Translates complex errors into simple colored traffic-light orbs requiring no technical translation."
+                      >
+                        Status
+                      </Annotation>
+                    </th>
                     <th>Action Needed</th>
                   </tr>
                 </thead>
@@ -104,25 +113,18 @@ export default function MemberReviewPage() {
                   {isLoading && <tr><td colSpan="4" style={{textAlign: 'center', padding: 'var(--space-6)'}}>Loading extracted members...</td></tr>}
                   {!isLoading && filteredMembers.length === 0 && <tr><td colSpan="4" style={{textAlign: 'center', padding: 'var(--space-6)'}}>No members align with this status.</td></tr>}
                   
-                  <Annotation
-                    title="Status Badges"
-                    what="simplify decision-making"
-                    why="reduce complexity"
-                    how="Translates complex errors into simple colored traffic-light orbs requiring no technical translation."
-                  >
-                    {filteredMembers.slice(0, 150).map(member => (
-                      <tr key={member.id}>
-                        <td>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500}}>
-                            {member.name}
-                          </div>
-                        </td>
-                        <td>{member.enrollmentType || 'New Enrollment'}</td>
-                        <td>{getStatusBadge(member.status)}</td>
-                        <td>{getActionNeeded(member.status)}</td>
-                      </tr>
-                    ))}
-                  </Annotation>
+                  {filteredMembers.slice(0, 150).map(member => (
+                    <tr key={member.id}>
+                      <td>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500}}>
+                          {member.name}
+                        </div>
+                      </td>
+                      <td>{member.enrollmentType || 'New Enrollment'}</td>
+                      <td>{getStatusBadge(member.status)}</td>
+                      <td>{getActionNeeded(member.status)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

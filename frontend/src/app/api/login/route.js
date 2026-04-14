@@ -5,7 +5,7 @@ export async function POST(req) {
   try {
     const { email, password } = await req.json();
     if (email === 'admin@demo.com' && password === 'admin123') {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       cookieStore.set('auth', 'true', { httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/' });
       return NextResponse.json({ success: true });
     }
