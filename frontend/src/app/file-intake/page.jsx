@@ -100,7 +100,7 @@ export default function FileIntakePage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>File Intake</h1>
+          <h1 className={styles.title}>Batch Onboard</h1>
         </div>
       </div>
 
@@ -116,7 +116,7 @@ export default function FileIntakePage() {
       {uploadState === 'success' && (
         <Annotation title="Redirect" what="smooth progression" why="Automates manual labor" how="Eliminates the human need to manually navigate forward if a file works natively.">
            <div style={{backgroundColor: 'var(--success-light)', border: '1px solid var(--success)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', color: 'var(--success-dark)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-6)', fontWeight: 600}}>
-            File processed successfully! Redirecting to Member Review...
+            File processed successfully! Redirecting to Batch Review...
           </div>
         </Annotation>
       )}

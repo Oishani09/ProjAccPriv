@@ -12,20 +12,22 @@ import {
   Package,
   Activity,
   BarChart,
-  Settings 
+  Settings,
+  Bot
 } from 'lucide-react';
 import useUIStore from '../../store/uiStore';
 import styles from './Sidebar.module.css';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/file-intake', label: 'File Intake', icon: FileText },
-  { href: '/member-review', label: 'Member Review', icon: UserCheck },
+  { href: '/file-intake', label: 'Batch Onboard', icon: FileText },
+  { href: '/member-review', label: 'Batch Review', icon: UserCheck },
   { href: '/clarifications', label: 'Clarifications', icon: MessageSquare },
   { href: '/enrollment-readiness', label: 'Enrollment Readiness', icon: CheckCircle },
   { href: '/batch-preparation', label: 'Batch Preparation', icon: Package },
   { href: '/enrollment-monitoring', label: 'Enrollment Monitoring', icon: Activity },
   { href: '/insights', label: 'Insights', icon: BarChart },
+  { href: '/ai-assistant', label: 'AI Assistant', icon: Bot },
 ];
 
 export default function Sidebar() {

@@ -22,7 +22,7 @@ export default function RootLayout({ children }) {
           <Sidebar />
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
             <Topbar />
-            <main style={{ flex: 1, backgroundColor: 'var(--bg-root)', overflow: 'auto', padding: 'var(--space-6)' }}>
+            <main style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: 'var(--bg-root)', overflow: 'auto', padding: 'var(--space-6)' }}>
               <QueryProvider>
                 {children}
               </QueryProvider>

@@ -55,7 +55,7 @@ export default function MemberReviewPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Member Review</h1>
+          <h1 className={styles.title}>Batch Review</h1>
           <p className={styles.subtitle}>Extracted members categorized purely by business readiness state.</p>
         </div>
       </div>
