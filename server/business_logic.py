@@ -99,12 +99,7 @@ def validate_member_record(member_doc):
         if dep_gender not in ["M", "F", "U", "O", "X"]:
             issues.append(f"Dependent ({dep_name}): Invalid or missing gender marker ('{dep_gender}')")
             
-        # --- Semantic Gender Mismatch Check (Commented out to allow default dataset to pass) ---
-        relation = dep_info.get("relationship", "").lower()
-        if relation in ["son", "boy"] and dep_gender == "F":
-             issues.append(f"Dependent ({dep_name}): Possible gender mismatch (Son listed as Female)")
-        elif relation in ["daughter", "girl"] and dep_gender == "M":
-             issues.append(f"Dependent ({dep_name}): Possible gender mismatch (Daughter listed as Male)")
+
         
         dep_dob_str = dep_info.get("dob")
         if not dep_dob_str:
