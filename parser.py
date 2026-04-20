@@ -100,6 +100,8 @@ def parse_edi(edi_text):
                     "city": None,
                     "state": None,
                     "zip": None,
+                    "phone": None,
+                    "email": None,
                     **employer,
                     **insurer
                 },
@@ -133,17 +135,28 @@ def parse_edi(edi_text):
             info["dob"] = format_date(elements[2])
             info["gender"] = elements[3]
 
+        elif seg_id == "PER" and current_member:
+            info = current_member["member_info"]
+            for i, val in enumerate(elements):
+                if val in ["HP", "TE", "CP"] and i + 1 < len(elements) and not info.get("phone"):
+                    info["phone"] = elements[i+1]
+                elif val == "EM" and i + 1 < len(elements) and not info.get("email"):
+                    info["email"] = elements[i+1]
+
         elif seg_id == "HD" and current_member:
             current_coverage = {
                 "coverage_type": elements[1] if len(elements) > 1 else None,
                 "plan_code": elements[3] if len(elements) > 3 else None,
-                "coverage_start_date": None
+                "effective_date": None,
+                "termination_date": None
             }
             current_member["coverages"].append(current_coverage)
 
         elif seg_id == "DTP" and len(elements) > 3:
             if elements[1] == "348" and current_member and current_member["coverages"]:
-                current_member["coverages"][-1]["coverage_start_date"] = format_date(elements[3])
+                current_member["coverages"][-1]["effective_date"] = format_date(elements[3])
+            elif elements[1] == "349" and current_member and current_member["coverages"]:
+                current_member["coverages"][-1]["termination_date"] = format_date(elements[3])
             elif elements[1] == "303" and current_transaction:
                 current_transaction["transaction_metadata"]["effective_date"] = format_date(elements[3])
 
