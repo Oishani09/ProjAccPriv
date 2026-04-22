@@ -32,9 +32,13 @@ BATCHES_TABLE = f"{PROJECT_ID}.{DATASET_ID}.batches"
 
 def get_bq_client():
     """Initializes the BigQuery client using service account or default credentials."""
-    if CREDENTIALS_PATH and os.path.exists(CREDENTIALS_PATH):
-        return bigquery.Client.from_service_account_json(CREDENTIALS_PATH)
-    return bigquery.Client(project=PROJECT_ID)
+    try:
+        if CREDENTIALS_PATH and os.path.exists(CREDENTIALS_PATH):
+            return bigquery.Client.from_service_account_json(CREDENTIALS_PATH)
+        return bigquery.Client(project=PROJECT_ID)
+    except Exception as e:
+        print(f"BigQuery Client Error: {e}")
+        return None
 
 
 def ensure_tables_exist():
@@ -76,6 +80,8 @@ def save_member_to_bq(member_data):
     a date-keyed branch inside 'history', exactly like MongoDB.
     """
     client = get_bq_client()
+    if not client:
+        return None
     sub_id = member_data.get("subscriber_id") or member_data.get("member_info", {}).get("subscriber_id")
 
     if not sub_id:
@@ -138,6 +144,8 @@ def save_member_to_bq(member_data):
 def get_all_members():
     """Returns all members as a list of dicts. Same format as MongoDB's find({}, {"_id": 0})."""
     client = get_bq_client()
+    if not client:
+        return []
     query = f"SELECT data FROM `{MEMBERS_TABLE}`"
     try:
         results = client.query(query).result()
@@ -150,6 +158,8 @@ def get_all_members():
 def get_member_by_id(subscriber_id):
     """Returns a single member dict by subscriber_id. Same as MongoDB's find_one()."""
     client = get_bq_client()
+    if not client:
+        return None
     query = f"SELECT data FROM `{MEMBERS_TABLE}` WHERE subscriber_id = @sub_id"
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -168,6 +178,8 @@ def get_member_by_id(subscriber_id):
 def get_members_by_status(status):
     """Returns all members with a given status. Same as MongoDB's find({"status": ...})."""
     client = get_bq_client()
+    if not client:
+        return []
     query = f"SELECT data FROM `{MEMBERS_TABLE}` WHERE status = @status"
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -188,6 +200,8 @@ def update_member_status(subscriber_id, updates):
     Same as MongoDB's update_one with $set.
     """
     client = get_bq_client()
+    if not client:
+        return False
     existing = get_member_by_id(subscriber_id)
     if not existing:
         return False
@@ -229,6 +243,8 @@ def update_members_batch(subscriber_ids, updates):
 def get_all_batches():
     """Returns all batches as a list of dicts."""
     client = get_bq_client()
+    if not client:
+        return []
     query = f"SELECT data FROM `{BATCHES_TABLE}`"
     try:
         results = client.query(query).result()
@@ -240,6 +256,8 @@ def get_all_batches():
 def create_batch_in_bq(batch_doc):
     """Inserts a new batch document. Same as MongoDB's insert_one."""
     client = get_bq_client()
+    if not client:
+        return
     data_json = json.dumps(batch_doc)
     query = f"""
         INSERT INTO `{BATCHES_TABLE}` (id, status, data)
@@ -258,6 +276,8 @@ def create_batch_in_bq(batch_doc):
 def get_batch_by_id(batch_id):
     """Returns a single batch by ID. Same as MongoDB's find_one."""
     client = get_bq_client()
+    if not client:
+        return None
     query = f"SELECT data FROM `{BATCHES_TABLE}` WHERE id = @batch_id"
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
