@@ -8,3 +8,5 @@ pyx12
 pymongo
 google-cloud-storage
 xmltodict
+google-cloud-bigquery
+python-dotenv
