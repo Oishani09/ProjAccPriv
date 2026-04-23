@@ -177,3 +177,68 @@ def parse_edi(edi_text):
         "file_metadata": file_metadata,
         "transactions": transactions
     }
+
+if __name__ == "__main__":
+    import sys
+    import os
+    # Add project root to path so we can import db.bq_connection and server logic
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    
+    from db.bq_connection import load_members_to_bq
+    from server.routers.files import check_file_integrity
+    
+    # Path to a sample EDI file for testing
+    sample_path = "synthetic_data/edi_834_100_strict_production/strict_1.edi" 
+    
+    if os.path.exists(sample_path):
+        print(f"--- Starting Side-by-Side Flow for {sample_path} ---")
+        
+        # 1. Structural Integrity Check (Same as Production)
+        print("Step 1: Checking File Integrity...")
+        validation_status = check_file_integrity(sample_path)
+        print(f"Status: {validation_status}")
+        
+        if validation_status != "Healthy":
+            print("Aborting: File structure is invalid.")
+            sys.exit(1)
+            
+        # 2. Parsing (Same as Production)
+        print("Step 2: Parsing EDI Content...")
+        with open(sample_path, 'r') as f:
+            edi_content = f.read()
+        parsed_result = parse_edi(edi_content)
+        
+        # 3. BigQuery Transformation (New Side-by-Side Step)
+        print("Step 3: Preparing Data for BigQuery...")
+        members_to_load = []
+        file_meta = parsed_result["file_metadata"]
+        
+        for tx in parsed_result["transactions"]:
+            for member in tx["members"]:
+                # Match the "Record" structure exactly
+                bq_row = {
+                    "subscriber_id": member.get("subscriber_id") or member.get("member_info", {}).get("subscriber_id"),
+                    "status": "Side-by-Side Ingested",
+                    "file_metadata": file_meta,
+                    "member_info": member.get("member_info"),
+                    "coverages": member.get("coverages", []),
+                    "raw_data": json.dumps(member) # 100% Data Parity with Mongo
+                }
+                
+                # Cleanup: BigQuery doesn't like None for required fields or extra keys
+                if not bq_row["subscriber_id"]:
+                    bq_row["subscriber_id"] = f"MEM-{os.urandom(4).hex()}"
+                
+                members_to_load.append(bq_row)
+        
+        # 4. Ingestion (Mirroring Mongo flow but to BQ)
+        print(f"Step 4: Ingesting {len(members_to_load)} members to BigQuery...")
+        success = load_members_to_bq(members_to_load)
+        
+        if success:
+            print("\nSUCCESS: BigQuery Side-by-Side Flow Complete.")
+            print("Check your BigQuery console for the 'Side-by-Side Ingested' status.")
+        else:
+            print("\nFAILED: Ingestion error. Check GCP credentials/permissions.")
+    else:
+        print(f"Sample file not found at {sample_path}. Please place an EDI file there to test.")
