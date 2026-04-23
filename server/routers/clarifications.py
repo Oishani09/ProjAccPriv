@@ -34,15 +34,20 @@ def update_clarification(update: ClarificationUpdate):
         if c["id"] == update.id:
             if c["status"] == 'Awaiting Response':
                 c["status"] = 'Resolved'
-                # Mutate member back to ready
-                # Mutate member back to ready in MongoDB
-                from db.mongo_connection import get_database
-                db = get_database()
-                if db is not None:
-                    db.members.update_one(
-                        {"subscriber_id": c["memberId"]},
-                        {"$set": {"status": "Ready"}}
-                    )
+                # --- MongoDB (commented out) ---
+                # # Mutate member back to ready in MongoDB
+                # from db.mongo_connection import get_database
+                # db = get_database()
+                # if db is not None:
+                #     db.members.update_one(
+                #         {"subscriber_id": c["memberId"]},
+                #         {"$set": {"status": "Ready"}}
+                #     )
+                
+                # --- BigQuery ---
+                from db.bq_connection import update_member_status
+                update_member_status(c["memberId"], {"status": "Ready"})
+                
                 write_clarifications(claris)
                 return {"success": True}
     raise HTTPException(status_code=400, detail="Clarification not found")
