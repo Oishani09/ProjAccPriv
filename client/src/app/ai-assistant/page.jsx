@@ -1,44 +1,125 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, Loader2, CheckCircle2, Circle } from 'lucide-react';
+import { Bot, Send, Sparkles, Loader2, CheckCircle2, Circle, MessageSquare, Plus, PanelLeftClose, PanelLeftOpen, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import styles from './ai-assistant.module.css';
-import Annotation from '@/components/Annotation';
-import RemoveBottomPadding from '@/components/RemoveBottomPadding';
+import LockBodyScroll from '@/components/LockBodyScroll';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
+const formatTime = (isoString) => {
+  const d = new Date(isoString);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+// Zero state suggestions
+const suggestions = [
+  { id: 1, label: 'Check enrollment status' },
+  { id: 2, label: 'Find pending batches' },
+  { id: 3, label: 'Show flagged cases' },
+  { id: 4, label: 'Summarize recent activity' }
+];
 
 export default function AIAssistantPage() {
   const router = useRouter();
-  const [messages, setMessages] = useState([
-    { id: generateId(), role: 'ai', text: 'Hello! I am your AI Enrollment Assistant. Ask me about members, batches, or enrollment status.' }
+  
+  // State: Multiple Conversations
+  const [conversations, setConversations] = useState([
+    {
+      id: 'chat-initial',
+      title: 'Current Queue Analysis',
+      timestamp: new Date().toISOString(),
+      messages: [
+        { id: generateId(), role: 'ai', text: 'Hello! I am your AI Enrollment Assistant. Ask me about members, batches, or enrollment status.', timestamp: new Date().toISOString() }
+      ]
+    }
   ]);
+  const [currentChatId, setCurrentChatId] = useState('chat-initial');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Active chat references
+  const currentChat = conversations.find(c => c.id === currentChatId) || conversations[0];
+  const messages = currentChat.messages || [];
+
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  
   const [processSteps, setProcessSteps] = useState([
     { id: '1', title: 'Understanding Query', detail: 'Waiting for input...', status: 'pending' },
-    { id: '2', title: 'Fetching Data', detail: 'Fetching necessary records...', status: 'pending' },
-    { id: '3', title: 'Analyzing Results', detail: 'Evaluating business readiness...', status: 'pending' },
-    { id: '4', title: 'Generating Response', detail: 'Synthesizing answer...', status: 'pending' }
+    { id: '2', title: 'Fetching Data', detail: 'Waiting...', status: 'pending' },
+    { id: '3', title: 'Analyzing Results', detail: 'Waiting...', status: 'pending' },
+    { id: '4', title: 'Generating Response', detail: 'Waiting...', status: 'pending' }
   ]);
 
   const messagesEndRef = useRef(null);
+  const chatWindowRef = useRef(null);
+  const [userIsAtBottom, setUserIsAtBottom] = useState(true);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // Scroll logic: Track if user scrolled up
+  const handleScroll = () => {
+    if (!chatWindowRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatWindowRef.current;
+    // Allow 10px threshold
+    const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 10;
+    setUserIsAtBottom(isAtBottom);
   };
 
+  const scrollToBottom = (force = false) => {
+    if (force || userIsAtBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Scroll to bottom on new messages if at bottom
   useEffect(() => {
     scrollToBottom();
   }, [messages, isProcessing]);
 
-  const simulateProcessingFlow = async (queryText) => {
+  // Create New Chat
+  const handleNewChat = () => {
+    const newChatId = generateId();
+    setConversations(prev => [
+      {
+        id: newChatId,
+        title: 'New Conversation',
+        timestamp: new Date().toISOString(),
+        messages: []
+      },
+      ...prev
+    ]);
+    setCurrentChatId(newChatId);
+    setInputValue('');
+  };
+
+  const addMessageToChat = (chatId, messageObj) => {
+    setConversations(prev => prev.map(chat => {
+      if (chat.id === chatId) {
+        // Auto-title generation on first user prompt
+        const isFirstUserMessage = messageObj.role === 'user' && chat.messages.filter(m => m.role === 'user').length === 0;
+        let newTitle = chat.title;
+        if (isFirstUserMessage) {
+          newTitle = messageObj.text.length > 30 ? messageObj.text.substring(0, 30) + '...' : messageObj.text;
+        }
+        return {
+          ...chat,
+          title: newTitle,
+          messages: [...chat.messages, messageObj]
+        };
+      }
+      return chat;
+    }));
+  };
+
+  const simulateProcessingFlow = async (queryText, activeChatId) => {
     setIsProcessing(true);
+    // Force scroll to bottom when AI starts
+    scrollToBottom(true);
     
-    // Reset steps
-    setProcessSteps(steps => steps.map(s => ({ ...s, status: 'pending', detail: s.id === '1' ? 'Interpreting intent' : s.detail })));
+    setProcessSteps([
+      { id: '1', title: 'Understanding Query', detail: 'Interpreting intent', status: 'active' },
+      { id: '2', title: 'Fetching Data', detail: 'Waiting...', status: 'pending' },
+      { id: '3', title: 'Analyzing Results', detail: 'Waiting...', status: 'pending' },
+      { id: '4', title: 'Generating Response', detail: 'Waiting...', status: 'pending' }
+    ]);
 
     const updateStep = (id, status, detail) => {
       setProcessSteps(prev => prev.map(step => 
@@ -48,72 +129,68 @@ export default function AIAssistantPage() {
 
     const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-    // Step 1: Understanding
-    updateStep('1', 'active');
-    await delay(1000);
-    updateStep('1', 'completed', 'Intent extracted: Status Query');
+    await delay(800);
+    updateStep('1', 'completed', 'Intent extracted');
+    updateStep('2', 'active', 'Querying systems...');
 
-    // Step 2: Retrieval
-    updateStep('2', 'active', 'Querying /api/members and /api/batches');
-    await delay(1500);
-    updateStep('2', 'completed', 'Found 12 ready members, 1 pending batch');
-
-    // Step 3: Analysis
-    updateStep('3', 'active', 'Checking against readiness criteria');
     await delay(1200);
-    updateStep('3', 'completed', 'Readiness criteria met');
+    updateStep('2', 'completed', 'Data retrieved');
+    updateStep('3', 'active', 'Applying rules...');
 
-    // Step 4: Generation
-    updateStep('4', 'active', 'Formatting natural language response');
-    await delay(1000);
+    await delay(800);
+    updateStep('3', 'completed', 'Criteria checked');
+    updateStep('4', 'active', 'Formatting output...');
+
+    await delay(600);
     updateStep('4', 'completed', 'Response ready');
 
-    // Final AI response determination based on input
-    let responseText = "Based on the latest data, there are action items pending in the enrollment queue.";
+    let responseText = "Based on the system rules, everything looks normal.";
     let actions = [];
+    let structuredData = null;
 
-    if (queryText.toLowerCase().includes('ready') || queryText.toLowerCase().includes('enrollment')) {
-      responseText = "12 members are ready for enrollment. Batch 002 is prepared for approval.";
-      actions = [
-        { label: 'View Ready Members', route: '/member-review' },
-        { label: 'Go to Batch Preparation', route: '/batch-preparation' }
+    const lowerQuery = queryText.toLowerCase();
+    if (lowerQuery.includes('member') || lowerQuery.includes('status')) {
+      responseText = "Here are the members currently requiring attention:";
+      structuredData = [
+        { memberId: 'M001', name: 'John Doe', payer: 'Aetna', effectiveDate: '01-Jan-2025', actionNeeded: 'Awaiting Input', status: 'Awaiting Input' },
+        { memberId: 'M002', name: 'Sara Kim', payer: 'United', effectiveDate: '15-Feb-2025', actionNeeded: 'Ready', status: 'Ready' }
       ];
-    } else if (queryText.toLowerCase().includes('batch')) {
-      responseText = "Batch 002 is currently awaiting your signature. It contains 12 clean members.";
-      actions = [
-        { label: 'Review Batch 002', route: '/batch-preparation' }
-      ];
-    } else if (queryText.toLowerCase().includes('clarification')) {
-      responseText = "There are 3 members requiring clarifications due to missing Plan IDs.";
-      actions = [
-        { label: 'Provide Info', route: '/clarifications' }
-      ];
-    } else {
-      responseText = "I've reviewed the system. Currently, your queue requires attention in Member Review and Batch Preparation.";
+    } else if (lowerQuery.includes('batch')) {
+      responseText = "Batch 002 is prepared for approval with 12 clean members.";
+      actions = [{ label: 'Review Batch 002', route: '/batch-preparation' }];
+    } else if (lowerQuery.includes('flag') || lowerQuery.includes('clarification')) {
+      responseText = "3 members are missing critical plan identifiers.";
+      actions = [{ label: 'Provide Information', route: '/clarifications' }];
     }
 
-    setMessages(prev => [...prev, {
+    addMessageToChat(activeChatId, {
       id: generateId(),
       role: 'ai',
       text: responseText,
-      actions
-    }]);
+      actions,
+      structuredData,
+      timestamp: new Date().toISOString()
+    });
 
     setIsProcessing(false);
   };
 
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isProcessing) return;
+  const handleSend = (e, customText = null) => {
+    if (e) e.preventDefault();
+    const textToSend = customText || inputValue;
+    if (!textToSend.trim() || isProcessing) return;
 
-    const query = inputValue.trim();
     setInputValue('');
+    const targetChatId = currentChatId;
 
-    // Add user message
-    setMessages(prev => [...prev, { id: generateId(), role: 'user', text: query }]);
+    addMessageToChat(targetChatId, { 
+      id: generateId(), 
+      role: 'user', 
+      text: textToSend.trim(),
+      timestamp: new Date().toISOString()
+    });
 
-    // Trigger AI flow
-    simulateProcessingFlow(query);
+    simulateProcessingFlow(textToSend.trim(), targetChatId);
   };
 
   const handleActionClick = (route) => {
@@ -121,141 +198,207 @@ export default function AIAssistantPage() {
   };
 
   return (
-    <div className={styles.container}>
-      <RemoveBottomPadding />
-      {/* LEFT COLUMN: CHAT INTERFACE */}
-      <div className={styles.chatColumn}>
-        <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
-          <div className={styles.chatHeader}>
-            <div className={styles.chatTitle}>
-              <Bot className="lucide-icon" size={20} color="var(--primary)" />
-              AI Enrollment Assistant
-            </div>
+    <div className={styles.container} suppressHydrationWarning>
+      <LockBodyScroll />
+      
+      {/* LEFT COLUMN: HISTORY SIDEBAR */}
+      {isSidebarOpen && (
+        <div className={styles.historyColumn}>
+          <div className={styles.historyHeader}>
+            <button className={styles.newChatBtn} onClick={handleNewChat}>
+              <Plus size={16} /> New Chat
+            </button>
+            <button className={styles.iconBtn} onClick={() => setIsSidebarOpen(false)}>
+              <PanelLeftClose size={18} />
+            </button>
           </div>
-          
-          <Annotation 
-            title="Chat Interface" 
-            what="Conversational UX" 
-            why="Lowers cognitive load" 
-            how="Allows natural language queries directly over the data warehouse without complex navigation."
-          >
-            <div className={styles.chatWindow}>
-            {messages.map((msg) => (
-              <div key={msg.id} className={`${styles.messageWrapper} ${msg.role === 'user' ? styles.messageWrapperUser : styles.messageWrapperAI}`}>
-                <div className={`${styles.message} ${msg.role === 'user' ? styles.messageUser : styles.messageAI}`}>
-                  <div>{msg.text}</div>
-                  
-                  {/* Optional Action Buttons from AI */}
-                  {msg.actions && msg.actions.length > 0 && (
-                    <div className={styles.quickActions}>
-                      {msg.actions.map(action => (
-                        <button 
-                          key={action.label} 
-                          className={styles.quickActionButton}
-                          onClick={() => handleActionClick(action.route)}
-                        >
-                          {action.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+          <div className={styles.historyList}>
+            <div className={styles.historyGroupTitle}>Recent</div>
+            {conversations.map(chat => (
+              <div 
+                key={chat.id} 
+                className={`${styles.historyCard} ${currentChat.id === chat.id ? styles.historyCardActive : ''}`}
+                onClick={() => setCurrentChatId(chat.id)}
+              >
+                <MessageSquare size={14} className={styles.historyIcon} />
+                <div className={styles.historyCardContent}>
+                  <div className={styles.historyCardTitle}>{chat.title}</div>
+                  <div className={styles.historyCardTime}>{formatTime(chat.timestamp)}</div>
                 </div>
               </div>
             ))}
-            
-            {/* Loading / Typing indicator */}
-            {isProcessing && (
-              <div className={`${styles.messageWrapper} ${styles.messageWrapperAI}`}>
-                <div className={`${styles.message} ${styles.messageAI}`}>
-                  <div className={styles.typingIndicator}>
-                    <div className={styles.dot}></div>
-                    <div className={styles.dot}></div>
-                    <div className={styles.dot}></div>
+          </div>
+        </div>
+      )}
+
+      {/* CENTER COLUMN: CHAT INTERFACE */}
+      <div className={styles.chatColumn} suppressHydrationWarning>
+        <div className={styles.chatHeader}>
+          <div className={styles.chatTitle}>
+            {!isSidebarOpen && (
+              <button className={styles.iconBtn} onClick={() => setIsSidebarOpen(true)} style={{marginRight: '8px'}}>
+                <PanelLeftOpen size={18} />
+              </button>
+            )}
+            <Bot className="lucide-icon" size={20} color="var(--primary)" />
+            HealthEnroll AI
+          </div>
+        </div>
+        
+        <div className={styles.chatWindow} ref={chatWindowRef} onScroll={handleScroll}>
+          
+          {/* Zero State / Suggestions (if empty) */}
+          {messages.length === 0 && (
+            <div className={styles.zeroState}>
+              <div className={styles.zeroStateIcon}><Sparkles size={32} color="var(--primary)" /></div>
+              <h2>How can I help you today?</h2>
+              <div className={styles.suggestionGrid}>
+                {suggestions.map(s => (
+                  <button key={s.id} className={styles.suggestionCard} onClick={() => handleSend(null, s.label)}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Chat Messages */}
+          {messages.length > 0 && (
+            <div style={{display: 'flex', flexDirection: 'column', gap: 'var(--space-4)'}}>
+              {messages.map((msg) => (
+                <div key={msg.id} className={`${styles.messageWrapper} ${msg.role === 'user' ? styles.messageWrapperUser : styles.messageWrapperAI}`}>
+                  <div className={`${styles.message} ${msg.role === 'user' ? styles.messageUser : styles.messageAI}`}>
+                    <div className={styles.messageText}>{msg.text}</div>
+                    
+                    {/* Structured Data: Stacked Member Cards */}
+                    {msg.structuredData && (
+                      <div className={styles.memberCardList}>
+                        {msg.structuredData.map(member => (
+                          <div key={member.memberId} className={styles.memberCard}>
+                            <div className={styles.memberCardHeader}>
+                              <div className={styles.memberCardTitle}>
+                                <span className={styles.memberId}>{member.memberId}</span>
+                                <span className={styles.memberName}>{member.name}</span>
+                              </div>
+                              <span className={`${styles.badge} ${
+                                member.status === 'Ready' ? styles.badgeReady :
+                                member.status === 'Awaiting Input' ? styles.badgeAwaiting : styles.badgeError
+                              }`}>
+                                {member.actionNeeded}
+                              </span>
+                            </div>
+                            <div className={styles.memberCardBody}>
+                              <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Payer</span>
+                                <span className={styles.detailValue}>{member.payer}</span>
+                              </div>
+                              <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Date</span>
+                                <span className={styles.detailValue}>{member.effectiveDate}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Optional Action Buttons */}
+                    {msg.actions && msg.actions.length > 0 && (
+                      <div className={styles.quickActions}>
+                        {msg.actions.map(action => (
+                          <button key={action.label} className={styles.quickActionButton} onClick={() => handleActionClick(action.route)}>
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* WhatsApp style Timestamp */}
+                    <div className={`${styles.messageTime} ${msg.role === 'user' ? styles.messageTimeUser : styles.messageTimeAI}`}>
+                      {formatTime(msg.timestamp)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
-        </Annotation>
-
-          <Annotation 
-            title="Input Field" 
-            what="Action Trigger" 
-            why="Contextual prompts" 
-            how="Clear placeholder guides users to optimal queries (members, batches, status)."
-          >
-            <form className={styles.inputArea} onSubmit={handleSend}>
-              <input
-                type="text"
-                className={styles.input}
-                placeholder="Ask about members, batches, or enrollment status..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                disabled={isProcessing}
-              />
-              <button 
-                type="submit" 
-                className={styles.sendButton}
-                disabled={!inputValue.trim() || isProcessing}
-              >
-                <Send size={18} />
-              </button>
-            </form>
-          </Annotation>
+              ))}
+              
+              {/* Type Indicator */}
+              {isProcessing && (
+                <div className={`${styles.messageWrapper} ${styles.messageWrapperAI}`}>
+                  <div className={`${styles.message} ${styles.messageAI}`}>
+                    <div className={styles.typingIndicator}>
+                      <div className={styles.dot}></div>
+                      <div className={styles.dot}></div>
+                      <div className={styles.dot}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <div ref={messagesEndRef} style={{height: 1}} />
         </div>
+
+        {/* INPUT BOX */}
+        <form className={styles.inputArea} onSubmit={(e) => handleSend(e)}>
+          <div className={styles.inputPill}>
+            <input
+              type="text"
+              className={styles.input}
+              placeholder="Message your enrollment assistant..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              disabled={isProcessing}
+            />
+            <button 
+              type="submit" 
+              className={styles.sendButton}
+              disabled={!inputValue.trim() || isProcessing}
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* RIGHT COLUMN: PROCESSING PANEL */}
-      <div className={styles.processingColumn}>
-        <Annotation 
-          title="Processing Panel" 
-          what="System Transparency" 
-          why="Builds trust" 
-          how="Exposes step-by-step reasoning (Perplexity style) so users understand exactly how the AI arrived at its conclusion."
-        >
-          <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
-            <div className={styles.processingHeader}>
-              <div className={styles.processingTitle}>
-                <Sparkles className="lucide-icon" size={20} color="var(--primary)" />
-                AI Processing
-              </div>
-            </div>
-          
-          <div className={styles.processingBody}>
-            {processSteps.map((step) => {
-              
-              let StepIcon = Circle;
-              let iconClass = styles.stepIcon;
-              
-              if (step.status === 'active') {
-                StepIcon = Loader2;
-                iconClass = `${styles.stepIcon} ${styles.stepIconActive} animate-spin`;
-              } else if (step.status === 'completed') {
-                StepIcon = CheckCircle2;
-                iconClass = `${styles.stepIcon} ${styles.stepIconCompleted}`;
-              }
-
-              return (
-                <div key={step.id} className={styles.stepItem}>
-                  <div className={iconClass}>
-                    <StepIcon size={14} className={step.status === 'active' ? 'animate-spin' : ''} />
-                  </div>
-                  <div className={styles.stepContent}>
-                    <div className={`${styles.stepTitle} ${step.status === 'active' ? styles.stepTitleActive : (step.status === 'pending' ? styles.stepTitlePending : '')}`}>
-                      {step.title}
-                    </div>
-                    <div className={styles.stepDetail}>
-                      {step.detail}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+      <div className={styles.processingColumn} suppressHydrationWarning>
+        <div className={styles.processingHeader}>
+          <div className={styles.processingTitle}>
+            <Sparkles className="lucide-icon" size={18} color="var(--primary)" />
+            Processing Engine
           </div>
         </div>
-        </Annotation>
+        
+        <div className={styles.processingBody}>
+          {processSteps.map((step) => {
+            let StepIcon = Circle;
+            let iconClass = styles.stepIcon;
+            
+            if (step.status === 'active') {
+              StepIcon = Loader2;
+              iconClass = `${styles.stepIcon} ${styles.stepIconActive} animate-spin`;
+            } else if (step.status === 'completed') {
+              StepIcon = CheckCircle2;
+              iconClass = `${styles.stepIcon} ${styles.stepIconCompleted}`;
+            }
+
+            return (
+              <div key={step.id} className={styles.stepItem}>
+                <div className={iconClass}>
+                  <StepIcon size={14} className={step.status === 'active' ? 'animate-spin' : ''} />
+                </div>
+                <div className={styles.stepContent}>
+                  <div className={`${styles.stepTitle} ${step.status === 'active' ? styles.stepTitleActive : (step.status === 'pending' ? styles.stepTitlePending : '')}`}>
+                    {step.title}
+                  </div>
+                  <div className={styles.stepDetail}>
+                    {step.detail}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

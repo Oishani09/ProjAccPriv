@@ -8,13 +8,14 @@ import { Files, Users, AlertTriangle, CheckCircle, Activity, ShieldCheck } from 
 import { useQuery } from '@tanstack/react-query';
 
 export default function DashboardPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['metrics'],
     queryFn: () => fetch('/api/metrics').then(res => res.json()),
     refetchInterval: 2000
   });
 
   if (isLoading) return <div className={styles.container}>Loading dashboard analytics...</div>;
+  if (isError || !data) return <div className={styles.container}>Error loading dashboard analytics.</div>;
 
   const { kpis, pieData } = data;
 

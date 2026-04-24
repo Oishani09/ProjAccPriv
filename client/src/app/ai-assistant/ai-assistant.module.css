@@ -1,7 +1,7 @@
 .container {
   display: flex;
-  height: calc(100vh - 64px); 
-  margin-bottom: calc(var(--space-6) * -1);
+  height: 100%;
+  min-height: 0;
   gap: var(--space-6);
   animation: fadeIn 0.3s ease-in;
 }
@@ -12,15 +12,16 @@
 }
 
 .chatColumn {
-  flex: 7; /* 70% width roughly */
+  flex: 7;
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0; /* Remove bottom rounding */
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   border-bottom: 0;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  position: relative;
 }
 
 .chatHeader {
@@ -49,6 +50,7 @@
   flex-direction: column;
   gap: var(--space-4);
   background: var(--bg-root);
+  min-height: 0;
 }
 
 .messageWrapper {
@@ -110,13 +112,17 @@
 }
 
 .inputArea {
-  padding: var(--space-4) var(--space-5);
-  padding-bottom: calc(var(--space-4) + var(--space-6)); /* Ensures the visual white bottom extends fully through the negative margin */
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border);
   background: var(--bg-surface);
   display: flex;
   gap: var(--space-3);
   align-items: center;
+  z-index: 10;
 }
 
 .input {
@@ -289,3 +295,109 @@
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
 }
+
+/* Structured Member Cards */
+.memberCardList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  width: 100%;
+}
+
+.memberCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.memberCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.memberCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.memberCardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.memberId {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.memberName {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.memberCardBody {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detailLabel {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.detailValue {
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+/* Badges */
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badgeReady {
+  background-color: var(--success-light);
+  color: var(--success);
+}
+
+.badgeAwaiting {
+  background-color: var(--warning-light);
+  color: var(--warning);
+}
+
+.badgeError {
+  background-color: var(--danger-light);
+  color: var(--danger);
+}
+

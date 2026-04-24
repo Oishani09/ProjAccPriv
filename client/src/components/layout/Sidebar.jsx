@@ -20,7 +20,7 @@ import styles from './Sidebar.module.css';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/file-intake', label: 'Subscriber Onboarding', icon: FileText },
+  { href: '/file-intake', label: 'Batch Review', icon: FileText },
   { href: '/integrity-workbench', label: 'Integrity Workbench', icon: UserCheck },
   { href: '/clarifications', label: 'Clarifications', icon: MessageSquare },
   { href: '/release-staging', label: 'Release Staging', icon: Package },
@@ -55,13 +55,13 @@ export default function Sidebar() {
             >
               <Icon size={20} className={styles.icon} />
               {sidebarOpen && <span className={styles.label}>{item.label}</span>}
-              {isActive && sidebarOpen && <div className={styles.activeIndicator} />}
+              {isActive && sidebarOpen && <div className={styles.activeIndicator} suppressHydrationWarning />}
             </Link>
           );
         })}
       </nav>
 
-      <div className={styles.footer}>
+      <div className={styles.footer} suppressHydrationWarning>
         <Link
           href="/admin"
           className={`${styles.navItem} ${pathname.startsWith('/admin') ? styles.active : ''}`}
