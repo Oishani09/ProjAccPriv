@@ -4,8 +4,8 @@ import time
 import json
 import random
 from datetime import datetime
-# from db.mongo_connection import save_member_to_mongo  # COMMENTED OUT — MongoDB
-from db.bq_connection import save_member_to_bq  # NEW — BigQuery
+from db.mongo_connection import save_member_to_mongo  # RESTORED — MongoDB
+# from db.bq_connection import save_member_to_bq  # DISABLED — BigQuery
 from parser import parse_edi
 
 router = APIRouter(prefix="/api")
@@ -198,8 +198,8 @@ def check_structure():
                         sub_id = info.get("subscriber_id") or f"MEM-{os.urandom(4).hex()}"
                         m_data["subscriber_id"] = sub_id
                         m_data["status"] = "Pending Business Validation"
-                        # save_member_to_mongo(m_data)  # COMMENTED OUT — MongoDB
-                        save_member_to_bq(m_data)  # NEW — BigQuery
+                        save_member_to_mongo(m_data)  # RESTORED — MongoDB
+                        # save_member_to_bq(m_data)  # DISABLED — BigQuery
                 
                 os.remove(filepath)
                 st["status"] = "Parsed & Ingested"
