@@ -7,6 +7,7 @@ from datetime import datetime
 from db.mongo_connection import save_member_to_mongo  # RESTORED — MongoDB
 # from db.bq_connection import save_member_to_bq  # DISABLED — BigQuery
 from parser import parse_edi
+from server.edi_validator import check_edi_structure  # NEW — Centralized validator
 
 router = APIRouter(prefix="/api")
 
@@ -72,91 +73,6 @@ async def upload_file(file: UploadFile = File(...)):
     
     return {"success": True, "fileId": file_id}
 
-def check_file_integrity(filepath):
-    """
-    Combined SNIP Level 1 & Control Number Integrity Check.
-    """
-    try:
-        if not os.path.exists(filepath):
-            return "File Missing"
-            
-        with open(filepath, 'r') as f:
-            text = f.read().strip()
-            
-        # 1. Base & Envelope Check
-        if not text:
-            return "Empty File"
-        if not text.startswith("ISA"):
-            return "Missing ISA Header"
-        if len(text) < 106:
-            return "Truncated ISA Segment (Must be 106 chars)"
-            
-        # 2. Extract Dynamic Delimiters
-        element_delimiter = text[3]
-        segment_terminator = text[105]
-        
-        if segment_terminator.isalnum():
-            return "Invalid Segment Terminator (Cannot be alphanumeric)"
-            
-        # 3. Structural Split
-        segments = [s.strip() for s in text.split(segment_terminator) if s.strip()]
-        if not segments[-1].startswith("IEA"):
-            return "Missing IEA Trailer"
-            
-        # 4. Mandatory Envelope Hierarchy Check
-        segment_names = [seg.split(element_delimiter)[0] for seg in segments if element_delimiter in seg]
-        required_envelopes = ["ISA", "GS", "ST", "SE", "GE", "IEA"]
-        for req in required_envelopes:
-            if req not in segment_names:
-                return f"Corrupt Hierarchy: Missing {req} Envelope"
-
-        # 5. Extract Envelope Segments for Control Validation
-        isa_elements = segments[0].split(element_delimiter)
-        iea_elements = segments[-1].split(element_delimiter)
-        
-        if len(isa_elements) < 14 or len(iea_elements) < 3:
-            return "Malformed Envelope Elements"
-
-        # 6. Control Number Integrity Check (ISA13 must match IEA02)
-        isa_control = isa_elements[13].strip()
-        iea_control = iea_elements[2].strip()
-        
-        if isa_control != iea_control:
-            return f"Control Number Mismatch (ISA:{isa_control} != IEA:{iea_control})"
-
-        # 7. ST/SE Dynamic Segment Math (Commented out to let synthetic datasets pass!)
-        in_transaction = False
-        transaction_segment_count = 0
-        
-        for seg in segments:
-            parts = seg.split(element_delimiter)
-            seg_id = parts[0]
-            
-            if seg_id == "ST":
-                in_transaction = True
-                transaction_segment_count = 1  
-                continue
-                
-            if in_transaction:
-                transaction_segment_count += 1
-                if seg_id == "SE":
-                    # --- Check bypassed for testing ---
-                    # if len(parts) >= 2:
-                    #     try:
-                    #         stated_count = int(parts[1])
-                    #         if stated_count != transaction_segment_count:
-                    #             return f"Tamper Alert: Declared SE count {stated_count} does not match physical count {transaction_segment_count}"
-                    #     except ValueError:
-                    #         return "Invalid SE Segment Count"
-                    in_transaction = False
-                    transaction_segment_count = 0
-
-        # If it passes all 7 gauntlets, it's golden
-        return "Healthy"
-    
-    except Exception as e:
-        return f"Structure Error: {str(e)}"
-
 @router.post("/check-structure")
 def check_structure():
     target_dir = get_todays_dir()
@@ -183,7 +99,9 @@ def check_structure():
         st = statuses.get(fname, {"status": "Unchecked", "id": str(int(time.time()*1000))})
         
         # Call the real validator
-        validation_status = check_file_integrity(filepath)
+        with open(filepath, 'r') as f:
+            edi_text = f.read()
+        validation_status = check_edi_structure(edi_text)
         
         st["status"] = validation_status
         if validation_status == "Healthy":
